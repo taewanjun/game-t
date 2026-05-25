@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>오늘의 복 카드 뽑기</title>
+    <style>
+        * { 
+            box-sizing: border-box; margin: 0; padding: 0; 
+            -webkit-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard, Roboto, sans-serif;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px; 
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            position: relative;
+        }
+        .header {
+            width: 100%;
+            padding-top: 10px;
+            padding-bottom: 20px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 10; 
+        }
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #00FF66;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: -40px;
+        }
+        .title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #FFFFFF, #8E8E93);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .description { font-size: 1.05rem; color: #8E8E93; margin-bottom: 2.5rem; }
+        .card-container {
+            display: flex; gap: 10px; justify-content: center; width: 100%; margin-bottom: 2.5rem; perspective: 1000px;
+        }
+        .card {
+            flex: 1; aspect-ratio: 3 / 4.8; position: relative; cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease; transform-style: preserve-3d;
+        }
+        .card.flipped { transform: rotateY(180deg); }
+        .card.disabled { cursor: default; pointer-events: none; }
+        
+        .card-face {
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            border-radius: 14px; display: flex; align-items: center; justify-content: center;
+            padding: 12px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .card-front {
+            background: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%); color: #FFD700;
+            font-size: 2.3rem; font-weight: 900; border: 2px solid #3A3A3C; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        .card-back {
+            background-color: #1C1C1E; color: #FFFFFF; transform: rotateY(180deg);
+            border: 2px solid #00FF66; font-size: 0.82rem; font-weight: 600; line-height: 1.45;
+            word-break: keep-all; white-space: pre-line;
+        }
+        .card.unselected { opacity: 0.5; }
+        .card.unselected .card-back { border-color: #3A3A3C; color: #8E8E93; }
+
+        .reset-btn {
+            display: none; width: 100%; padding: 18px; font-size: 1.05rem; font-weight: 600;
+            color: #00FF66; background-color: #1C1C1E; border: 1px solid #00FF66; border-radius: 14px;
+            cursor: pointer; box-shadow: 0 0 15px rgba(0, 255, 102, 0.1);
+        }
+        .reset-btn:active { transform: scale(0.97); background-color: #2C2C2E; }
+        .reset-btn.show { display: block; animation: fadeIn 0.4s ease forwards; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body ontouchstart="">
+
+    <div class="app-container">
+        <div class="header">
+            <button class="back-btn" onclick="playAudio('click'); setTimeout(()=>window.location.replace('index.html'), 50)">⬅️ 메인으로</button>
+        </div>
+        
+        <div class="content">
+            <h1 class="title">오늘의 복 카드 뽑기</h1>
+            <p class="description">마음에 드는 카드 1장을 골라보세요</p>
+
+            <div class="card-container">
+                <div class="card" onclick="flipCard(this, 0)">
+                    <div class="card-face card-front">福</div>
+                    <div class="card-face card-back"></div>
+                </div>
+                <div class="card" onclick="flipCard(this, 1)">
+                    <div class="card-face card-front">福</div>
+                    <div class="card-face card-back"></div>
+                </div>
+                <div class="card" onclick="flipCard(this, 2)">
+                    <div class="card-face card-front">福</div>
+                    <div class="card-face card-back"></div>
+                </div>
+            </div>
+
+            <button class="reset-btn" id="resetBtn" onclick="resetCards()">[ 🔄 카드 새로 섞고 다시 뽑기 ]</button>
+        </div>
+    </div>
+
+    <script>
+        // 무한 다회차 플레이를 유도하는 운세 카드 데이터베이스 대폭 확장 (20개셋)
+        const baseFortunes = [
+            "💰\n대박 재물운\n\n오늘 지갑이 두둑해지는 최고의 날!",
+            "🍀\n럭키 행운수\n\n생각지 못한 뜻밖의 횡재수가 찾아옵니다!",
+            "💪\n무한 건강운\n\n에너지가 가득 차 활기찬 하루!",
+            "❤️\n인간관계운\n\n사람들이 당신의 매력을 알아보는 날.",
+            "🎯\n집중력 만렙\n\n오늘 손대는 일은 무엇이든 일사천리!",
+            "🌟\n주인공의 날\n\n어딜 가나 주목받고 기분이 좋은 하루.",
+            "☕\n소소한 행복\n\n따뜻한 커피 한 잔처럼 편안한 일상.",
+            "🌈\n기분 전환\n\n답답했던 마음이 눈 녹듯 사라집니다.",
+            "🏃\n지치지 않는 체력\n\n피로가 뭐죠? 지치지 않는 에너자이저!",
+            "🎁\n뜻밖의 선물\n\n누군가 당신을 위해 작은 성의를 준비합니다.",
+            "🔮\n소원 성취\n\n마음속으로 바라던 작은 소망이 이뤄질 기회.",
+            "🚀\n성장 가속도\n\n기술 and 능력이 한 단계 도약하는 타이밍.",
+            "🤫\n완벽한 비밀 보장\n\n말 못 할 비밀이나 계획이 순조롭게 진행됨.",
+            "🗣️\n최고의 말빨\n\n당신의 설득력이 최고조에 달하는 날.",
+            "🧩\n문제 해결\n\n엉켜있던 고민의 실타래가 탁 풀립니다.",
+            "🔋\n급속 완충\n\n단 한 시간의 휴식으로 완벽히 충전 완료.",
+            "🎬\n영화 같은 순간\n\n하루 중 기억에 남을 특별한 명장면 탄생.",
+            "🎵\n귀 호강의 날\n\n우연히 들은 노래가 온종일 행복을 줍니다.",
+            "🔍\n숨은 유물 발견\n\n잊고 지던 소중한 물건을 찾게 될 운수.",
+            "🦉\n마인드 컨트롤\n\n어떤 돌발 상황에도 평정심을 유지하는 현명함."
+        ];
+        let currentFortunes = []; let hasFlipped = false;
+        let audioCtx = null;
+
+        function playAudio(type) {
+            let systemSound = localStorage.getItem('systemSound') !== 'false';
+            if (!systemSound) return;
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+
+                if (type === 'flip') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+                }
+            } catch(e) {}
+        }
+
+        function shuffleFortunes() {
+            // 전체 20개 중 무작위 3개를 큐에 추출 매핑하여 다회차 방어
+            let tempPool = [...baseFortunes].sort(() => Math.random() - 0.5);
+            currentFortunes = [tempPool[0], tempPool[1], tempPool[2]];
+            
+            const backs = document.querySelectorAll('.card-back');
+            backs.forEach((back, idx) => { back.innerText = currentFortunes[idx]; });
+        }
+
+        function flipCard(cardElement, selectedIdx) {
+            if (hasFlipped) return;
+            hasFlipped = true;
+            playAudio('flip');
+            
+            let systemVibe = localStorage.getItem('systemVibe') !== 'false';
+            if (systemVibe && navigator.vibrate) navigator.vibrate(50);
+
+            const allCards = document.querySelectorAll('.card');
+            allCards.forEach((card) => {
+                card.classList.add('disabled');
+                
+                if (card === cardElement) { 
+                    card.classList.add('flipped'); 
+                } else { 
+                    card.classList.add('unselected'); 
+                    setTimeout(() => {
+                        card.classList.add('flipped');
+                    }, 600);
+                }
+            });
+
+            setTimeout(() => { document.getElementById('resetBtn').classList.add('show'); }, 1400);
+        }
+
+        function resetCards() {
+            hasFlipped = false;
+            playAudio('click');
+            const allCards = document.querySelectorAll('.card');
+            
+            allCards.forEach(card => card.classList.remove('flipped', 'disabled', 'unselected'));
+            document.getElementById('resetBtn').classList.remove('show');
+            
+            setTimeout(() => { shuffleFortunes(); }, 400);
+        }
+
+        window.onload = shuffleFortunes;
+    </script>
+</body>
+</html>

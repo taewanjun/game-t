@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>행복한하루</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard, Roboto, sans-serif;
+            color: #FFFFFF;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #007AFF, #00FF66);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 122, 255, 0.2);
+        }
+        .button-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .btn {
+            width: 100%;
+            padding: 22px 24px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            background-color: #1C1C1E;
+            border: 1px solid #2C2C2E;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .btn.btn-fortune:active {
+            transform: scale(0.97);
+            background-color: #2C2C2E;
+            border-color: #00FF66;
+        }
+        .btn.btn-betting:active {
+            transform: scale(0.97);
+            background-color: #2C2C2E;
+            border-color: #007AFF;
+        }
+        .btn span {
+            white-space: nowrap;
+        }
+        .btn span.emoji {
+            font-size: 1.4rem;
+        }
+    </style>
+</head>
+<body ontouchstart="">
+
+    <div class="app-container">
+        <h1 class="title">행복한하루</h1>
+        
+        <div class="button-group">
+            <button class="btn btn-fortune" onclick="playClickSound(() => window.location.href='fortune.html')">
+                <span>🔮 오늘의 복 카드 뽑기</span>
+                <span class="emoji">▶️</span>
+            </button>
+            <button class="btn btn-betting" onclick="playClickSound(() => window.location.href='betting.html')">
+                <span>🎮 복불복 단체 파티 게임</span>
+                <span class="emoji">▶️</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx = null;
+
+        // 초기 앱 설정 동기화 마감
+        if (localStorage.getItem('systemSound') === null) localStorage.setItem('systemSound', 'true');
+        if (localStorage.getItem('systemVibe') === null) localStorage.setItem('systemVibe', 'true');
+
+        function playClickSound(callback) {
+            let systemSound = localStorage.getItem('systemSound') !== 'false';
+            if (!systemSound) {
+                setTimeout(callback, 50);
+                return;
+            }
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch(e) { console.log(e); }
+            
+            setTimeout(callback, 80);
+        }
+    </script>
+</body>
+</html>

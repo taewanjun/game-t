@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>복불복 파티 게임</title>
+    <style>
+        * { 
+            box-sizing: border-box; margin: 0; padding: 0; 
+            -webkit-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard Variable", Pretendard, Roboto, sans-serif;
+            color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; min-height: 100dvh;
+            overflow-x: hidden;
+            transition: background-color 0.15s ease;
+        }
+        body.panic-mode {
+            background-color: #2c0000;
+            animation: bodyPulse 0.3s infinite alternate;
+        }
+        .app-container {
+            width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; padding: 24px; position: relative;
+        }
+        .header {
+            width: 100%; display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 1.5rem; margin-top: 10px; z-index: 10;
+        }
+        .back-btn { position: absolute; left: 0; background: none; border: none; font-size: 1rem; font-weight: 600; color: #007AFF; cursor: pointer; }
+        .title { font-size: 1.5rem; font-weight: 700; }
+        
+        .setting-bar {
+            width: 100%; display: flex; justify-content: flex-end; gap: 14px; margin-bottom: 1rem; padding: 0 4px;
+        }
+        .toggle-btn {
+            background: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 20px; padding: 6px 14px;
+            font-size: 0.9rem; font-weight: 600; color: #FFFFFF; cursor: pointer; transition: all 0.2s;
+        }
+        .toggle-btn.off { color: #8E8E93; background-color: #2C2C2E; border-color: #3A3A3C; }
+
+        #setup-container {
+            width: 100%; background: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 16px; padding: 20px; margin-bottom: 1.5rem;
+            display: flex; flex-direction: column; gap: 16px; max-height: 420px; overflow-y: auto;
+        }
+        .setup-title { font-size: 1.1rem; font-weight: 700; color: #007AFF; }
+        .member-count-selector { display: flex; gap: 10px; width: 100%; }
+        .count-btn {
+            flex: 1; padding: 12px; background: #2C2C2E; border: 1px solid #3A3A3C; border-radius: 10px;
+            color: #FFFFFF; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .count-btn.active { background: #007AFF; border-color: #007AFF; }
+        .name-input-group { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 6px; }
+        .name-input-item { display: flex; align-items: center; gap: 10px; }
+        .name-label { font-size: 0.95rem; font-weight: 600; color: #8E8E93; min-width: 55px; }
+        
+        .modern-input {
+            flex: 1; padding: 12px 16px; background: #000000; border: 1px solid #3A3A3C; border-radius: 10px;
+            color: #FFFFFF; font-size: 0.95rem; font-weight: 600; outline: none; -webkit-user-select: text; user-select: text;
+        }
+        .modern-input:focus { border-color: #007AFF; }
+        .add-penalty-form { display: flex; gap: 10px; width: 100%; border-top: 1px solid #2C2C2E; padding-top: 14px; margin-top: 4px; }
+
+        .scoreboard {
+            width: 100%; background: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 12px; padding: 12px 16px; margin-bottom: 1.5rem;
+            display: none; flex-direction: column; gap: 10px; opacity: 0;
+        }
+        .scoreboard.show { display: flex; animation: fadeIn 0.3s ease forwards; }
+        .score-header-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .score-title { font-weight: 700; color: #FFD700; font-size: 0.95rem; }
+        .score-list { display: flex; flex-wrap: wrap; gap: 8px; color: #E5E5EA; width: 100%; }
+        .score-item { background: #000000; padding: 4px 10px; border-radius: 8px; border: 1px solid #3A3A3C; transition: all 0.2s; font-size: 0.85rem; }
+        .score-item.active-turn { border-color: #007AFF; background: rgba(0, 122, 255, 0.2); color: #007AFF; font-weight: bold; transform: scale(1.03); }
+
+        #menu-view { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .info-text { font-size: 1.1rem; color: #8E8E93; margin-bottom: 1.5rem; }
+        .game-menu { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+        .game-btn {
+            width: 100%; padding: 18px; font-size: 1.1rem; font-weight: 600; color: #FFFFFF; background-color: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 14px;
+            cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+        .game-btn:active { transform: scale(0.97); background-color: #2C2C2E; }
+        
+        #roulette-view, #card-view, #blackjack-view, #bomb-view { display: none; width: 100%; flex-direction: column; align-items: center; text-align: center; }
+        
+        #shuffle-view { display: none; width: 100%; flex-direction: column; align-items: center; justify-content: center; margin-top: 20px; }
+        #shuffle-canvas { background-color: #1C1C1E; border-radius: 20px; border: 1px solid #2C2C2E; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+        .shuffle-text { font-size: 1.3rem; font-weight: 700; color: #007AFF; margin-top: 20px; animation: pulse 1s infinite alternate; }
+
+        .status-text { font-size: 1.2rem; font-weight: 600; margin-bottom: 2rem; color: #E5E5EA; line-height: 1.4; min-height: 56px; }
+        .penalty-box { margin-top: 1rem; padding: 14px; background: rgba(255, 69, 58, 0.1); border: 1px dashed #FF453A; border-radius: 10px; font-size: 1.05rem; font-weight: 700; color: #FF453A; display: none; animation: fadeIn 0.4s ease; }
+
+        .gun-stage {
+            width: 170px; height: 170px; background-color: #1C1C1E; border: 2px solid #3A3A3C; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 4rem; margin-bottom: 2.5rem; box-shadow: 0 0 20px rgba(255,255,255,0.05);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .gun-stage.fired { background-color: #FF453A; border-color: #FF453A; animation: shake 0.2s ease-in-out infinite; box-shadow: 0 0 30px rgba(255, 69, 58, 0.4); }
+        .gun-stage.panic-bomb { border-color: #FF453A; box-shadow: 0 0 25px rgba(255, 69, 58, 0.6); animation: shake 0.12s infinite alternate; }
+
+        .action-btn { width: 100%; padding: 18px; font-size: 1.2rem; font-weight: 700; color: #FFFFFF; background-color: #FF453A; border: none; border-radius: 14px; cursor: pointer; box-shadow: 0 4px 15px rgba(255, 69, 58, 0.3); margin-bottom: 16px; }
+        .action-btn:active { transform: scale(0.98); }
+        .reset-btn { width: 100%; padding: 16px; font-size: 1rem; font-weight: 600; color: #007AFF; background-color: transparent; border: 2px solid #007AFF; border-radius: 14px; cursor: pointer; display: none; }
+        
+        .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; width: 100%; max-width: 320px; margin-bottom: 2.5rem; perspective: 1000px; }
+        .flip-card { aspect-ratio: 2 / 3; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
+        .flip-card.flipped { transform: rotateY(180deg); }
+        .flip-card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .flip-card-back { background: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%); color: #8E8E93; border: 2px solid #3A3A3C; }
+        .flip-card-front { background-color: #1C1C1E; color: #30D158; transform: rotateY(180deg); border: 2px solid #30D158; }
+        .flip-card.bomb .flip-card-front { border: 2px solid #FF453A; background-color: #1C1C1E; color: #FF453A; }
+        
+        .blackjack-board { width: 100%; background-color: #1C1C1E; border: 1px solid #2C2C2E; border-radius: 16px; padding: 20px; margin-bottom: 2rem; min-height: 130px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center; }
+        .bj-card { width: 60px; height: 90px; background-color: #000000; border: 2px solid #FFFFFF; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.3rem; color: #FFFFFF; box-shadow: 0 4px 8px rgba(0,0,0,0.5); animation: fadeIn 0.3s ease forwards; }
+        .bj-btn-group { width: 100%; display: flex; gap: 12px; margin-bottom: 16px; }
+        .bj-btn { flex: 1; padding: 18px; font-size: 1.1rem; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; color: #FFFFFF; }
+        .bj-btn.hit { background-color: #007AFF; box-shadow: 0 4px 10px rgba(0,122,255,0.2); }
+        .bj-btn.stand { background-color: #3A3A3C; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes shake { 0% { transform: translate(2px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+        @keyframes bodyPulse { from { background-color: #000000; } to { background-color: #2f0000; } }
+        @keyframes pulse { from { opacity: 0.6; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="header">
+            <button class="back-btn" id="header-back" onclick="goBackToMain()">⬅️ 메인으로</button>
+            <h1 class="title" id="header-title">복불복 파티 게임</h1>
+        </div>
+
+        <div class="setting-bar">
+            <button class="toggle-btn" id="sound-toggle" onclick="toggleSound()">🔊 사운드 ON</button>
+            <button class="toggle-btn" id="vibe-toggle" onclick="toggleVibe()">📳 진동 ON</button>
+        </div>
+
+        <div id="setup-container">
+            <div class="setup-title">👥 참여 플레이어 수 설정</div>
+            <div class="member-count-selector">
+                <button class="count-btn" id="cnt-2" onclick="setMemberCount(2)">2인용</button>
+                <button class="count-btn active" id="cnt-3" onclick="setMemberCount(3)">3인용</button>
+                <button class="count-btn" id="cnt-4" onclick="setMemberCount(4)">4인용</button>
+            </div>
+            <div class="name-input-group" id="dynamic-name-inputs"></div>
+            
+            <div class="add-penalty-form">
+                <input type="text" class="modern-input" id="custom-penalty-input" placeholder="여기에 나만의 벌칙 직접 쓰기..." maxlength="35">
+                <button class="count-btn" style="background:#30D158; border-color:#30D158; max-width:80px;" onclick="addNewPenalty()">추가</button>
+            </div>
+        </div>
+
+        <div class="scoreboard" id="main-scoreboard">
+            <div class="score-header-row">
+                <span class="score-title">💥 플레이어별 벌점 랭킹:</span>
+                <button style="background:none; border:none; color:#FF453A; font-weight:600; cursor:pointer; font-size:0.85rem;" onclick="resetScoreboard()">🔄 스코어 초기화</button>
+            </div>
+            <div class="score-list" id="dynamic-score-list"></div>
+        </div>
+
+        <div id="menu-view">
+            <p class="info-text">모임에서 함께 즐기는 랜덤 서바이벌 패키지 ⭐</p>
+            <div class="game-menu">
+                <button class="game-btn" onclick="triggerRouletteWithSpin()"><span>🔫 러시안룰렛 스핀 게임</span><span>▶️</span></button>
+                <button class="game-btn" onclick="openCardDraw()"><span>🃏 랜덤 카드 서바이벌</span><span>▶️</span></button>
+                <button class="game-btn" onclick="triggerBlackjackWithShuffle()"><span>🃏 라스트 넘버 서바이벌</span><span>▶️</span></button>
+                <button class="game-btn" onclick="triggerBombWithShuffle()"><span>💣 시한폭탄 폭탄돌리기</span><span>▶️</span></button>
+            </div>
+        </div>
+
+        <div id="shuffle-view">
+            <canvas id="shuffle-canvas" width="320" height="240"></canvas>
+            <div class="shuffle-text" id="shuffle-label">장인이 열심히 준비하는 중...</div>
+        </div>
+
+        <div id="roulette-view">
+            <p class="status-text" id="game-status">남은 슬롯: 6개 중 1개 장전 완료</p>
+            <div class="gun-stage" id="gun-display">⚙️</div>
+            <div class="penalty-box" id="roulette-penalty"></div>
+            <button class="action-btn" id="trigger-button" onclick="pullTrigger()">버튼 누르기 💥</button>
+            <button class="reset-btn" id="reset-button" onclick="triggerRouletteWithSpin()">슬롯 새로 회전하기 (재시작)</button>
+        </div>
+
+        <div id="card-view">
+            <p class="status-text" id="card-status">4장의 카드 중 1장의 벌칙 카드를 피하세요!</p>
+            <div class="card-grid" id="card-grid-container"></div>
+            <div class="penalty-box" id="card-penalty" style="width:100%; max-width:320px; margin-bottom:2rem;"></div>
+            <button class="reset-btn" id="card-reset-button" style="width:100%; color:#30D158; border-color:#30D158;" onclick="initCardDraw()">새 카드로 다시 섞기 (재시작)</button>
+        </div>
+
+        <div id="blackjack-view">
+            <p class="status-text" id="bj-status">카드를 뽑아 21을 넘기면 즉시 아웃!</p>
+            <div class="blackjack-board" id="bj-board-container"></div>
+            <div class="penalty-box" id="bj-penalty" style="width:100%; margin-bottom:2rem;"></div>
+            <div class="bj-btn-group" id="bj-controls">
+                <button class="bj-btn hit" onclick="bjHit()">카드 받기 (Hit)</button>
+                <button class="bj-btn stand" onclick="bjStand()">스톱 & 패스 (Stand)</button>
+            </div>
+            <button class="reset-btn" id="bj-reset-button" style="width:100%; color:#007AFF; border-color:#007AFF;" onclick="triggerBlackjackWithShuffle()">새 게임 시작 (재시작)</button>
+        </div>
+
+        <div id="bomb-view">
+            <p class="status-text" id="bomb-status">폭탄이 째깍거립니다! 미션을 수행하고 옆 사람에게 넘기세요!</p>
+            <div class="gun-stage" id="bomb-display">💣</div>
+            <div class="penalty-box" id="bomb-penalty"></div>
+            <button class="action-btn" id="bomb-start-button" style="background-color:#FF9500; box-shadow: 0 4px 15px rgba(255,149,0,0.3);" onclick="startBombTimer()">💣 폭탄 타이머 시작</button>
+            <button class="action-btn" id="bomb-pass-button" style="background-color:#007AFF; box-shadow: 0 4px 15px rgba(0,122,255,0.3); display:none;" onclick="passBombTurn()">👉 다음 주자에게 패스</button>
+            <button class="reset-btn" id="bomb-reset-button" onclick="triggerBombWithShuffle()">새 폭탄 가져오기 (재시작)</button>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx = null;
+        let currentRotation = 0;
+        let shuffleAnimationId = null;
+
+        let systemSound = localStorage.getItem('systemSound') !== 'false';
+        let systemVibe = localStorage.getItem('systemVibe') !== 'false';
+        
+        let totalMembers = 3; 
+        let playerNames = ["플레이어1", "플레이어2", "플레이어3"];
+        let playerScores = [0, 0, 0, 0];
+        let currentTurn = 0;
+
+        // 라스트 넘버(블랙잭)용 실시간 전역 상태
+        let bjScoresList = []; 
+        let bjStandCount = 0;
+
+        let penalties = [];
+        const defaultPenalties = [
+            "📢 우측 사람에게 손가락 하트 발사하기",
+            "🥤 시원하게 물 한 잔 마시기",
+            "💬 최근 보낸 메시지 첫 문장 읽기",
+            "🎤 무반주로 좋아하는 노래 한 소절 가창",
+            "👏 다음 판 걸릴 때까지 양손 공수 자세 유지"
+        ];
+
+        function initAudioEngine() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function loadPenalties() {
+            const stored = localStorage.getItem('customPenalties');
+            if (stored) {
+                penalties = JSON.parse(stored);
+            } else {
+                penalties = [...defaultPenalties];
+            }
+        }
+
+        function getRandomPenalty() {
+            return penalties[Math.floor(Math.random() * penalties.length)];
+        }
+
+        function addNewPenalty() {
+            const input = document.getElementById('custom-penalty-input');
+            const txt = input.value.trim();
+            if(txt !== "") {
+                penalties.push(`🔥 [커스텀] ${txt}`);
+                localStorage.setItem('customPenalties', JSON.stringify(penalties));
+                input.value = "";
+                playSound('click');
+                alert(`벌칙 목록에 "${txt}" 가 추가되었습니다!`);
+            }
+        }
+
+        function setMemberCount(count) {
+            playSound('click');
+            totalMembers = count;
+            for(let i=2; i<=4; i++) {
+                document.getElementById(`cnt-${i}`).classList.toggle('active', i === count);
+            }
+            renderNameInputs();
+        }
+
+        function renderNameInputs() {
+            const container = document.getElementById('dynamic-name-inputs');
+            container.innerHTML = '';
+            playerNames = [];
+            
+            const storedNames = localStorage.getItem(`playerNames_${totalMembers}`);
+            let parsedNames = storedNames ? JSON.parse(storedNames) : null;
+
+            for (let i = 0; i < totalMembers; i++) {
+                const defaultName = parsedNames && parsedNames[i] ? parsedNames[i] : `플레이어${i+1}`;
+                playerNames.push(defaultName);
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'name-input-item';
+                itemDiv.innerHTML = `
+                    <span class="name-label">이름 ${i+1}</span>
+                    <input type="text" class="modern-input" value="${defaultName}" onchange="updatePlayerName(${i}, this.value)">
+                `;
+                container.appendChild(itemDiv);
+            }
+        }
+
+        function updatePlayerName(index, value) {
+            if(value.trim() !== "") {
+                playerNames[index] = value.trim();
+                localStorage.setItem(`playerNames_${totalMembers}`, JSON.stringify(playerNames));
+            }
+        }
+
+        function buildScoreboardUI() {
+            const container = document.getElementById('dynamic-score-list');
+            container.innerHTML = '';
+            for(let i=0; i<totalMembers; i++) {
+                const scoreItem = document.createElement('span');
+                scoreItem.className = 'score-item';
+                scoreItem.id = `player-box-${i}`;
+                scoreItem.innerHTML = `${playerNames[i]}: <b id="player-score-${i}">${playerScores[i]}</b>`;
+                container.appendChild(scoreItem);
+            }
+            document.getElementById('main-scoreboard').classList.add('show');
+            updateTurnUI();
+        }
+
+        function updateTurnUI() {
+            for(let i=0; i<totalMembers; i++) {
+                const box = document.getElementById(`player-box-${i}`);
+                if(box) box.classList.toggle('active-turn', i === currentTurn);
+            }
+        }
+
+        function addScoreToPlayer(targetIndex) {
+            playerScores[targetIndex]++;
+            const el = document.getElementById(`player-score-${targetIndex}`);
+            if(el) el.innerText = playerScores[targetIndex];
+        }
+
+        function nextTurn() {
+            currentTurn = (currentTurn + 1) % totalMembers;
+            updateTurnUI();
+        }
+
+        function resetScoreboard() {
+            playSound('click');
+            currentTurn = 0;
+            for(let i=0; i<4; i++) playerScores[i] = 0;
+            buildScoreboardUI();
+        }
+
+        function syncToggleButtons() {
+            document.getElementById('sound-toggle').innerText = systemSound ? "🔊 사운드 ON" : "🔇 사운드 OFF";
+            document.getElementById('sound-toggle').classList.toggle('off', !systemSound);
+            document.getElementById('vibe-toggle').innerText = systemVibe ? "📳 진동 ON" : "📴 진동 OFF";
+            document.getElementById('vibe-toggle').classList.toggle('off', !systemVibe);
+        }
+
+        function toggleSound() {
+            systemSound = !systemSound;
+            localStorage.setItem('systemSound', systemSound);
+            syncToggleButtons();
+            if(systemSound) playSound('click');
+        }
+        function toggleVibe() {
+            systemVibe = !systemVibe;
+            localStorage.setItem('systemVibe', systemVibe);
+            syncToggleButtons();
+            if(systemVibe) triggerVibration(50);
+        }
+        function triggerVibration(duration) {
+            if (systemVibe && navigator.vibrate) navigator.vibrate(duration);
+        }
+
+        function playSound(type) {
+            if (!systemSound) return;
+            try {
+                initAudioEngine();
+                if (!audioCtx) return;
+
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+
+                if (type === 'click') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(550, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+                } else if (type === 'shuffle') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(300, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.08);
+                } else if (type === 'click_fast') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.04, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.005, audioCtx.currentTime + 0.03);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.03);
+                } else if (type === 'tick') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.02);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.02);
+                } else if (type === 'boom') {
+                    const bufferSize = audioCtx.sampleRate * 0.4;
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+                    const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+                    const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.4, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    noise.connect(filter); filter.connect(gain);
+                    noise.start(); noise.stop(audioCtx.currentTime + 0.4);
+                }
+            } catch(e) {}
+        }
+
+        function goBackToMain() { 
+            playSound('click'); 
+            stopBombEngine(); 
+            document.body.classList.remove('panic-mode'); 
+            // 가상 라우팅 스택 정리를 보장하며 메인 이동
+            setTimeout(() => window.location.replace('index.html'), 50); 
+        }
+        
+        function closeGameView() {
+            if (shuffleAnimationId) cancelAnimationFrame(shuffleAnimationId);
+            stopBombEngine(); playSound('click'); document.body.classList.remove('panic-mode');
+            document.getElementById('header-title').innerText = "복불복 파티 게임";
+            const backBtn = document.getElementById('header-back'); backBtn.innerText = "⬅️ 메인으로"; backBtn.onclick = goBackToMain;
+            document.getElementById('setup-container').style.display = 'flex';
+            document.getElementById('main-scoreboard').style.display = 'none';
+            document.getElementById('menu-view').style.display = 'flex';
+            document.getElementById('roulette-view').style.display = 'none'; 
+            document.getElementById('card-view').style.display = 'none'; 
+            document.getElementById('blackjack-view').style.display = 'none';
+            document.getElementById('bomb-view').style.display = 'none';
+            document.getElementById('shuffle-view').style.display = 'none';
+        }
+
+        function openShuffleTheater(targetGameName, startCallback) {
+            document.getElementById('menu-view').style.display = 'none';
+            document.getElementById('setup-container').style.display = 'none';
+            document.getElementById('roulette-view').style.display = 'none';
+            document.getElementById('card-view').style.display = 'none';
+            document.getElementById('blackjack-view').style.display = 'none';
+            document.getElementById('bomb-view').style.display = 'none';
+            document.getElementById('shuffle-view').style.display = 'flex';
+            
+            const label = document.getElementById('shuffle-label');
+            if (targetGameName === 'spin') { label.innerText = "⚡ 슬롯 회전 매핑 중!!"; label.style.color = "#FF453A"; }
+            else { label.innerText = "🃏 카드 장치 활성화 중..."; label.style.color = "#007AFF"; }
+
+            const canvas = document.getElementById('shuffle-canvas'); const ctx = canvas.getContext('2d');
+            let startTime = null; let lastTick = 0;
+
+            function renderLoop(timestamp) {
+                if (!startTime) startTime = timestamp;
+                let progress = timestamp - startTime;
+                if (progress > 1500) {
+                    cancelAnimationFrame(shuffleAnimationId);
+                    document.getElementById('shuffle-view').style.display = 'none';
+                    buildScoreboardUI();
+                    startCallback();
+                    return;
+                }
+                if (timestamp - lastTick > 130) {
+                    if (targetGameName === 'spin') playSound('click_fast'); else playSound('shuffle');
+                    lastTick = timestamp;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let cx = canvas.width / 2; let cy = canvas.height / 2 - 10;
+                let wave = Math.sin(progress * 0.02);
+
+                ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4; ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath(); ctx.arc(cx, cy - 35, 14, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(cx, cy - 21); ctx.lineTo(cx, cy + 20); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(cx, cy + 20); ctx.lineTo(cx - 20, cy + 60); ctx.moveTo(cx, cy + 20); ctx.lineTo(cx + 20, cy + 60); ctx.stroke();
+
+                if (targetGameName === 'spin') {
+                    ctx.beginPath(); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx + 30, cy + wave * 10); ctx.stroke();
+                    ctx.fillStyle = '#FF453A'; ctx.fillRect(cx + 40, cy - 10, 20, 20);
+                } else {
+                    ctx.beginPath(); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx - 35, cy + wave * 15); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(cx, cy - 10); ctx.lineTo(cx + 35, cy - wave * 15); ctx.stroke();
+                    ctx.fillStyle = '#007AFF'; ctx.fillRect(cx - 15, cy + 25, 30, 6);
+                }
+                shuffleAnimationId = requestAnimationFrame(renderLoop);
+            }
+            shuffleAnimationId = requestAnimationFrame(renderLoop);
+        }
+
+        /* 🔫 1. 러시안룰렛 */
+        function triggerRouletteWithSpin() { openShuffleTheater('spin', () => { document.getElementById('header-title').innerText = "러시안룰렛"; document.getElementById('roulette-view').style.display = 'flex'; initRoulette(); }); }
+        function initRoulette() { currentTurn = 0; updateTurnUI(); cylinder = [1, 0, 0, 0, 0, 0].sort(() => Math.random() - 0.5); currentClick = 0; isGameOver = false; document.getElementById('game-status').innerText = `[ ${playerNames[currentTurn]} ] 님 차례, 버튼을 누르세요!`; document.getElementById('game-status').style.color = "#E5E5EA"; document.getElementById('roulette-penalty').style.display = 'none'; const display = document.getElementById('gun-display'); display.innerText = "⚙️"; currentRotation = 0; display.style.transform = `rotate(${currentRotation}deg)`; display.classList.remove('fired'); document.getElementById('trigger-button').style.display = 'block'; document.getElementById('reset-button').style.display = 'none'; pushVirtualHistory(); }
+        function pullTrigger() {
+            if (isGameOver) return;
+            const display = document.getElementById('gun-display'); const status = document.getElementById('game-status');
+            const bullet = cylinder[currentClick]; currentClick++;
+            if (bullet === 1) {
+                isGameOver = true; playSound('boom'); triggerVibration(500); addScoreToPlayer(currentTurn);
+                display.innerText = "💥"; display.classList.add('fired'); status.innerText = `아웃!!! [ ${playerNames[currentTurn]} ] 패배! ☠️`; status.style.color = "#FF453A";
+                const pBox = document.getElementById('roulette-penalty'); pBox.innerText = getRandomPenalty(); pBox.style.display = 'block';
+                document.getElementById('trigger-button').style.display = 'none'; document.getElementById('reset-button').style.display = 'block';
+            } else {
+                playSound('click'); triggerVibration(50);
+                currentRotation += 60; display.style.transform = `rotate(${currentRotation}deg)`;
+                display.innerText = "안전"; 
+                nextTurn();
+                status.innerText = `세이프! 다음 차례 ➡️ [ ${playerNames[currentTurn]} ] 님`;
+            }
+        }
+
+        /* 🃏 2. 카드 서바이벌 */
+        function openCardDraw() { openShuffleTheater('card', () => { document.getElementById('header-title').innerText = "카드 서바이벌"; document.getElementById('card-view').style.display = 'flex'; initCardDraw(); }); }
+        function initCardDraw() { currentTurn = 0; updateTurnUI(); playSound('click'); isCardGameOver = false; document.getElementById('card-status').innerText = `[ ${playerNames[currentTurn]} ] 님, 벌칙 카드를 피해 한 장 고르세요!`; document.getElementById('card-status').style.color = "#E5E5EA"; document.getElementById('card-penalty').style.display = 'none'; document.getElementById('card-reset-button').style.display = 'none'; cardsData = [1, 0, 0, 0].sort(() => Math.random() - 0.5); const gridContainer = document.getElementById('card-grid-container'); gridContainer.innerHTML = ''; for (let i = 0; i < 4; i++) { const cardDiv = document.createElement('div'); cardDiv.className = 'flip-card'; cardDiv.setAttribute('onclick', `drawCard(this, ${i})`); cardDiv.innerHTML = `<div class="flip-card-face flip-card-back">🃏</div><div class="flip-card-face flip-card-front">?</div>`; gridContainer.appendChild(cardDiv); } pushVirtualHistory(); }
+        function drawCard(cardElement, index) {
+            if (isCardGameOver || cardElement.classList.contains('flipped')) return;
+            const status = document.getElementById('card-status'); const isBomb = cardsData[index] === 1;
+            if (isBomb) {
+                isCardGameOver = true; playSound('boom'); cardElement.classList.add('bomb', 'flipped'); cardElement.querySelector('.flip-card-front').innerText = "💀 벌칙";
+                triggerVibration(500); addScoreToPlayer(currentTurn); status.innerText = `[ ${playerNames[currentTurn]} ] 벌칙 카드 적발! 아웃! ☠️`; status.style.color = "#FF453A";
+                const pBox = document.getElementById('card-penalty'); pBox.innerText = getRandomPenalty(); pBox.style.display = 'block';
+                revealAllCards(); document.getElementById('card-reset-button').style.display = 'block';
+            } else {
+                cardElement.classList.add('flipped'); playSound('click'); cardElement.querySelector('.flip-card-front').innerText = "😇 통과";
+                triggerVibration(50); 
+                nextTurn();
+                status.innerText = `세이프! 다음 차례 ➡️ [ ${playerNames[currentTurn]} ] 님`;
+            }
+        }
+        function revealAllCards() { document.querySelectorAll('.flip-card').forEach((el, idx) => { if (!el.classList.contains('flipped')) { el.classList.add('flipped'); if (cardsData[idx] === 1) { el.classList.add('bomb'); el.querySelector('.flip-card-front').innerText = "💀 벌칙"; } else { el.querySelector('.flip-card-front').innerText = "😇 통과"; } } }); }
+
+        /* 🃏 3. 라스트 넘버 (버그 전면 수정 완료) */
+        function triggerBlackjackWithShuffle() { openShuffleTheater('card', () => { document.getElementById('header-title').innerText = "라스트 넘버"; document.getElementById('blackjack-view').style.display = 'flex'; initBlackjack(); }); }
+        function initBlackjack() { 
+            currentTurn = 0; 
+            updateTurnUI(); 
+            bjScore = 0; 
+            isBjOver = false; 
+            bjStandCount = 0;
+            bjScoresList = new Array(totalMembers).fill(0); // 모든 플레이어 점수 초기화 기록 대장
+            document.getElementById('bj-status').innerText = `[ ${playerNames[currentTurn]} ] 님 첫 카드 매핑 중...`; 
+            document.getElementById('bj-status').style.color = "#E5E5EA"; 
+            document.getElementById('bj-penalty').style.display = 'none'; 
+            document.getElementById('bj-board-container').innerHTML = ''; 
+            document.getElementById('bj-controls').style.display = 'flex'; 
+            document.getElementById('bj-reset-button').style.display = 'none'; 
+            bjHit(); 
+            pushVirtualHistory(); 
+        }
+        function bjHit() {
+            if (isBjOver) return;
+            const cardValue = Math.floor(Math.random() * 11) + 1; 
+            bjScore += cardValue;
+            
+            const board = document.getElementById('bj-board-container'); 
+            const cardEl = document.createElement('div'); 
+            cardEl.className = 'bj-card'; 
+            cardEl.innerText = cardValue; 
+            board.appendChild(cardEl);
+            
+            triggerVibration(40); 
+            const status = document.getElementById('bj-status');
+            
+            if (bjScore > 21) {
+                isBjOver = true; 
+                playSound('boom'); 
+                triggerVibration(600); 
+                addScoreToPlayer(currentTurn); // 즉시 21 넘긴 과실 유저 독박 패배 처리
+                status.innerText = `Bust!! 합계 ${bjScore}점! [ ${playerNames[currentTurn]} ] 초과 즉시 아웃! ☠️`; 
+                status.style.color = "#FF453A";
+                const pBox = document.getElementById('bj-penalty'); 
+                pBox.innerText = getRandomPenalty(); 
+                pBox.style.display = 'block';
+                document.getElementById('bj-controls').style.display = 'none'; 
+                document.getElementById('bj-reset-button').style.display = 'block';
+            } else if (bjScore === 21) {
+                playSound('click'); 
+                status.innerText = `✨ 퍼펙트 21!! 안전하게 [스톱 & 패스]를 누르세요.`; 
+                status.style.color = "#30D158";
+            } else { 
+                playSound('click'); 
+                status.innerText = `현재 [ ${playerNames[currentTurn]} ] 님의 카드 합계: ${bjScore}점`; 
+            }
+        }
+        function bjStand() { 
+            if (isBjOver) return; 
+            playSound('click'); 
+            
+            bjScoresList[currentTurn] = bjScore; // 현재 주자 최종 획득 스코어 안착
+            bjStandCount++;
+
+            const status = document.getElementById('bj-status');
+
+            // 마지막 플레이어까지 모두 안전하게 Stand를 누른 최종 정산 타이밍
+            if (bjStandCount >= totalMembers) {
+                isBjOver = true;
+                document.getElementById('bj-controls').style.display = 'none';
+                document.getElementById('bj-reset-button').style.display = 'block';
+
+                // 21 이하의 기록 중 가장 낮은 점수를 찾기 위한 연산
+                let minScore = 99;
+                let loserIndex = 0;
+                for(let i=0; i<totalMembers; i++) {
+                    if(bjScoresList[i] < minScore) {
+                        minScore = bjScoresList[i];
+                        loserIndex = i;
+                    }
+                }
+
+                playSound('boom');
+                triggerVibration(600);
+                addScoreToPlayer(loserIndex); // 가장 소극적이었던 최저점자 낙점
+                
+                status.innerText = `게임 종료! 꼴찌: [ ${playerNames[loserIndex]} ] (${minScore}점) 벌칙 낙점! ☠️`;
+                status.style.color = "#FF453A";
+                
+                // 직관성을 위한 보드 스코어 히스토리 노출 마감
+                const board = document.getElementById('bj-board-container');
+                board.innerHTML = `<div style="font-size:0.95rem; line-height:1.6; text-align:center; color:#8E8E93;">${playerNames.map((n,idx) => `${n}: ${bjScoresList[idx]}점`).join('<br>')}</div>`;
+
+                const pBox = document.getElementById('bj-penalty'); 
+                pBox.innerText = getRandomPenalty(); 
+                pBox.style.display = 'block';
+                return;
+            }
+
+            bjScore = 0; 
+            document.getElementById('bj-board-container').innerHTML = ''; 
+            nextTurn();
+            status.innerText = `패스 완료! 다음 차례 ➡️ [ ${playerNames[currentTurn]} ] 님, 카드를 뽑으세요.`;
+            status.style.color = "#007AFF";
+        }
+
+        /* 💣 4. 시한폭탄 폭탄돌리기 */
+        let bombTickId = null; let isBombRunning = false;
+        function triggerBombWithShuffle() { openShuffleTheater('spin', () => { document.getElementById('header-title').innerText = "시한폭탄"; document.getElementById('bomb-view').style.display = 'flex'; initBombGame(); }); }
+        function initBombGame() {
+            stopBombEngine(); currentTurn = 0; updateTurnUI(); document.body.classList.remove('panic-mode');
+            document.getElementById('bomb-status').innerText = `[ ${playerNames[currentTurn]} ] 님, 폭탄 시작 버튼을 누르세요!`;
+            document.getElementById('bomb-status').style.color = "#E5E5EA";
+            const bDisplay = document.getElementById('bomb-display');
+            bDisplay.innerText = "💣"; bDisplay.style.backgroundColor = "#1C1C1E"; bDisplay.classList.remove('panic-bomb');
+            document.getElementById('bomb-penalty').style.display = 'none';
+            document.getElementById('bomb-start-button').style.display = 'block';
+            document.getElementById('bomb-pass-button').style.display = 'none';
+            document.getElementById('bomb-reset-button').style.display = 'none';
+            pushVirtualHistory();
+        }
+        function startBombTimer() {
+            if (isBombRunning) return;
+            isBombRunning = true; playSound('click');
+            document.getElementById('bomb-start-button').style.display = 'none';
+            document.getElementById('bomb-pass-button').style.display = 'block';
+            document.getElementById('bomb-status').innerText = `💥 [ ${playerNames[currentTurn]} ] 폭탄 작동 중! 신속히 수행 후 패스하세요!`;
+            
+            let timeLimit = (Math.floor(Math.random() * 14) + 7) * 1000;
+            let currentElapsed = 0; let tickInterval = 600;
+
+            function runTick() {
+                if (!isBombRunning) return;
+                playSound('tick'); triggerVibration(30);
+                currentElapsed += tickInterval;
+                tickInterval = Math.max(120, tickInterval * 0.85);
+
+                const display = document.getElementById('bomb-display');
+                display.innerText = display.innerText === "💣" ? "💥" : "💣";
+
+                if (tickInterval < 220) {
+                    document.body.classList.add('panic-mode');
+                    display.classList.add('panic-bomb');
+                }
+
+                if (currentElapsed >= timeLimit) {
+                    stopBombEngine(); playSound('boom'); triggerVibration(700); addScoreToPlayer(currentTurn);
+                    document.body.classList.remove('panic-mode');
+                    display.classList.remove('panic-bomb');
+                    
+                    document.getElementById('bomb-status').innerText = `콰아앙!!! [ ${playerNames[currentTurn]} ] 님의 손에서 폭발! ☠️`;
+                    document.getElementById('bomb-status').style.color = "#FF453A";
+                    display.innerText = "🔥"; display.style.backgroundColor = "#FF453A";
+                    const pBox = document.getElementById('bomb-penalty'); pBox.innerText = getRandomPenalty(); pBox.style.display = 'block';
+                    document.getElementById('bomb-pass-button').style.display = 'none';
+                    document.getElementById('bomb-reset-button').style.display = 'block';
+                } else {
+                    bombTickId = setTimeout(runTick, tickInterval);
+                }
+            }
+            bombTickId = setTimeout(runTick, tickInterval);
+        }
+        function passBombTurn() {
+            if (!isBombRunning) return;
+            playSound('click');
+            nextTurn();
+            document.getElementById('bomb-status').innerText = `💥 [ ${playerNames[currentTurn]} ] 님에게 폭탄 배달 완료! 빠르게 미션 넘기세요!`;
+        }
+        function stopBombEngine() {
+            isBombRunning = false;
+            if (bombTickId) clearTimeout(bombTickId);
+        }
+
+        function pushVirtualHistory() {
+            window.history.pushState({ inGame: true }, "GameScreen", "#game-active");
+        }
+        window.onpopstate = function(event) {
+            closeGameView();
+        };
+
+        window.onload = function() {
+            syncToggleButtons();
+            loadPenalties();
+            renderNameInputs();
+        }
+    </script>
+</body>
+</html>
